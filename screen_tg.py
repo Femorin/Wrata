@@ -24,6 +24,7 @@ CHAT_ID         = os.getenv("CHAT_ID")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 HOTKEY          = os.getenv("HOTKEY", "f8")
 QUIT_HOTKEY     = os.getenv("QUIT_HOTKEY", "ctrl+alt+shift+q")
+SOLVER_MODEL    = os.getenv("SOLVER_MODEL", "mistral-large-latest")
 
 _mistral = Mistral(api_key=MISTRAL_API_KEY)
 
@@ -38,7 +39,7 @@ def make_screenshot() -> io.BytesIO:
         return buf
 
 
-def ask_pixtral(buf: io.BytesIO) -> str:
+def extract_question(buf: io.BytesIO) -> str:
     image_b64 = base64.b64encode(buf.read()).decode()
     response = _mistral.chat.complete(
         model="pixtral-12b-2409",
@@ -51,9 +52,32 @@ def ask_pixtral(buf: io.BytesIO) -> str:
                 },
                 {
                     "type": "text",
-                    "text": "На скриншоте есть вопрос или задание. Ответь на него подробно в 5 предложений не сильно больших. Если вопроса нет — опиши что видишь. Если вопрос есть - пиши сразу правильный вариант ответа и пояснение на 5 предложений."
+                    "text": (
+                        "Извлеки с этого скриншота текст вопроса или задания дословно. "
+                        "Если есть варианты ответов — перечисли их тоже. "
+                        "Не решай сам, только точно перепиши текст с экрана."
+                    )
                 }
             ]
+        }]
+    )
+    return response.choices[0].message.content
+
+
+def solve_question(question: str) -> str:
+    response = _mistral.chat.complete(
+        model=SOLVER_MODEL,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"{question}\n\n"
+                "Дай правильный ответ и объясни его в двух предложениях. "
+                "Если есть варианты — укажи какой правильный и почему. "
+                "Если правильных вариантов несколько, то назови все верные. "
+                "ВАЖНО: не используй LaTeX-разметку (\\frac, \\cdot, \\[ и т.п.). "
+                "Пиши математику обычным текстом: дроби как 11/3, "
+                "степени как 3^10, умножение как ×, корень как √."
+            )
         }]
     )
     return response.choices[0].message.content
@@ -73,11 +97,12 @@ def send_message(text: str):
 def on_hotkey():
     def worker():
         try:
-            buf    = make_screenshot()
-            answer = ask_pixtral(buf)
+            buf      = make_screenshot()
+            question = extract_question(buf)
+            answer   = solve_question(question)
+            send_message(answer)
         except Exception as e:
-            answer = f"Ошибка Pixtral: {e}"
-        send_message(answer)
+            send_message(f"Ошибка: {e}")
 
     threading.Thread(target=worker, daemon=True).start()
 

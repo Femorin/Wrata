@@ -16,6 +16,7 @@ pip install keyboard mss Pillow requests mistralai python-dotenv
 **2. Создай `.env` файл**
 
 Скопируй `.env.example` → `.env` и заполни своими ключами:
+!!Не меняйте SOLVER_MODEL=mistral-large-latest!!
 
 ```
 cp .env.example .env
