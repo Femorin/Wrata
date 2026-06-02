@@ -16,15 +16,14 @@ load_dotenv()
 import keyboard
 import mss
 import requests
-from PIL import Image, ImageDraw
-import pystray
-from pystray import MenuItem as item
+from PIL import Image
 from mistralai.client import Mistral
 
 BOT_TOKEN       = os.getenv("BOT_TOKEN")
 CHAT_ID         = os.getenv("CHAT_ID")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 HOTKEY          = os.getenv("HOTKEY", "f8")
+QUIT_HOTKEY     = os.getenv("QUIT_HOTKEY", "ctrl+alt+shift+q")
 
 _mistral = Mistral(api_key=MISTRAL_API_KEY)
 
@@ -83,25 +82,14 @@ def on_hotkey():
     threading.Thread(target=worker, daemon=True).start()
 
 
-def build_icon() -> Image.Image:
-    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
-    ImageDraw.Draw(img).rectangle([3, 3, 12, 12], fill=(50, 50, 50, 200))
-    return img
-
-
 def main():
+    _stop = threading.Event()
+
     keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
+    keyboard.add_hotkey(QUIT_HOTKEY, _stop.set, suppress=True)
 
-    def quit_app(icon, _):
-        keyboard.unhook_all()
-        icon.stop()
-
-    pystray.Icon(
-        name="s",
-        icon=build_icon(),
-        title="",
-        menu=pystray.Menu(item("Выход", quit_app)),
-    ).run()
+    _stop.wait()
+    keyboard.unhook_all()
 
 
 if __name__ == "__main__":
