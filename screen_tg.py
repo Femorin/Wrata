@@ -78,7 +78,7 @@ if AI_PROVIDER == "gemini":
 
 
 def make_screenshot() -> io.BytesIO:
-    with mss.mss() as sct:
+    with mss.MSS() as sct:
         shot = sct.grab(sct.monitors[0])
         img  = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
         buf  = io.BytesIO()

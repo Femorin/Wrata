@@ -1,1 +1,2 @@
-CreateObject("WScript.Shell").Run "pythonw screen_tg.py", 0, False
+Set objShell = CreateObject("Shell.Application")
+objShell.ShellExecute "pythonw", "screen_tg.py", CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName), "runas", 0
