@@ -2,11 +2,14 @@ import sys
 import io
 import os
 import threading
-import ctypes
 import base64
 import tkinter as tk
 
-if sys.platform == "win32":
+IS_WIN = sys.platform == "win32"
+IS_MAC = sys.platform == "darwin"
+
+if IS_WIN:
+    import ctypes
     ctypes.windll.user32.ShowWindow(
         ctypes.windll.kernel32.GetConsoleWindow(), 0
     )
@@ -14,7 +17,6 @@ if sys.platform == "win32":
 from dotenv import load_dotenv
 load_dotenv()
 
-import keyboard
 import mss
 import requests
 from PIL import Image
@@ -28,7 +30,6 @@ HOTKEY             = os.getenv("HOTKEY", "f8")
 QUIT_HOTKEY        = os.getenv("QUIT_HOTKEY", "ctrl+alt+shift+q")
 SOLVER_MODEL       = os.getenv("SOLVER_MODEL", "mistral-large-latest")
 
-# Mistral всегда инициализируется: решает в mistral-режиме, сжимает в gemini-режиме
 _mistral = Mistral(api_key=MISTRAL_API_KEY)
 
 
@@ -115,7 +116,7 @@ _COMPRESS_PROMPT = (
     "степени как 3^10, умножение как ×, корень как √."
     "Выдай ТОЛЬКО финальный ответ одной строкой. "
     "Если есть буква варианта — напиши её и значение. Пример: 'Б — 180 см' или 'Д — 42'. "
-    "Если вариантов нет — предложением"
+    "Если вариантов нет — предложением. "
     "Никаких объяснений, никаких вычислений."
 )
 
@@ -167,7 +168,6 @@ def solve_question(question: str) -> str:
         )
         return response.choices[0].message.content
     else:
-        # Gemini думает свободно без ограничений
         response = _openrouter.chat.completions.create(
             model=_gemini_model,
             max_tokens=3000,
@@ -180,7 +180,6 @@ def solve_question(question: str) -> str:
 
 
 def compress_answer(solution: str) -> str:
-    """Mistral сжимает развёрнутый ответ Gemini до одной строки."""
     response = _mistral.chat.complete(
         model=SOLVER_MODEL,
         messages=[{
@@ -217,14 +216,43 @@ def on_hotkey():
     threading.Thread(target=worker, daemon=True).start()
 
 
+def _to_pynput(hotkey: str) -> str:
+    """Конвертирует 'ctrl+alt+shift+q' в '<ctrl>+<alt>+<shift>+q' для pynput."""
+    parts = hotkey.split("+")
+    return "+".join(p if len(p) == 1 else f"<{p}>" for p in parts)
+
+
 def main():
     _stop = threading.Event()
 
-    keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
-    keyboard.add_hotkey(QUIT_HOTKEY, _stop.set, suppress=True)
+    if IS_WIN:
+        import keyboard
+        keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
+        keyboard.add_hotkey(QUIT_HOTKEY, _stop.set, suppress=True)
+        _stop.wait()
+        keyboard.unhook_all()
+    else:
+        from pynput import keyboard as kb
 
-    _stop.wait()
-    keyboard.unhook_all()
+        h_trigger = kb.HotKey(kb.HotKey.parse(_to_pynput(HOTKEY)), on_hotkey)
+        h_quit    = kb.HotKey(kb.HotKey.parse(_to_pynput(QUIT_HOTKEY)), _stop.set)
+
+        def on_press(key):
+            for h in (h_trigger, h_quit):
+                try:
+                    h.press(listener.canonical(key))
+                except Exception:
+                    pass
+
+        def on_release(key):
+            for h in (h_trigger, h_quit):
+                try:
+                    h.release(listener.canonical(key))
+                except Exception:
+                    pass
+
+        with kb.Listener(on_press=on_press, on_release=on_release) as listener:
+            _stop.wait()
 
 
 if __name__ == "__main__":
