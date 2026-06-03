@@ -7,6 +7,30 @@
 
 ---
 
+## Обновление (если уже установлено)
+
+### Windows
+Открой папку с программой, зажми `Shift` + правая кнопка мыши на пустом месте → **Открыть окно PowerShell здесь**, выполни:
+```
+git pull origin main
+pip install -r requirements.txt
+```
+Затем запусти `start.vbs` правой кнопкой → **Запуск от имени администратора**.
+
+### macOS
+```bash
+git pull origin main
+pip3 install -r requirements_mac.txt
+```
+
+### Linux
+```bash
+git pull origin main
+pip3 install -r requirements_linux.txt
+```
+
+---
+
 ## Установка
 
 ### Windows
