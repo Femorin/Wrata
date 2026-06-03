@@ -20,7 +20,7 @@ load_dotenv()
 import mss
 import requests
 from PIL import Image
-from mistralai.client import Mistral
+from mistralai import Mistral
 
 BOT_TOKEN          = os.getenv("BOT_TOKEN")
 CHAT_ID            = os.getenv("CHAT_ID")
