@@ -1,2 +1,5 @@
-Set objShell = CreateObject("Shell.Application")
-objShell.ShellExecute "python", "screen_tg.py", CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName), "runas", 0
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+strDir = objFSO.GetParentFolderName(WScript.ScriptFullName)
+
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -WindowStyle Hidden -Command ""Start-Process python -ArgumentList 'screen_tg.py' -WorkingDirectory '" & strDir & "' -Verb RunAs -WindowStyle Hidden""", 0, False
